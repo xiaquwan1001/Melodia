@@ -43,6 +43,9 @@ class PlaybackQueue {
 
     val isEmpty: Boolean get() = playItems.isEmpty()
 
+    // 顺序播放（SEQUENCE）到队尾就停，不再续播
+    val isAtLast: Boolean get() = playItems.isNotEmpty() && _currentIndex.value >= playItems.size - 1
+
     val original: List<QueueItem> get() = originalItems
 
     fun itemAt(index: Int): QueueItem? = playItems.getOrNull(index)
@@ -89,6 +92,7 @@ class PlaybackQueue {
         if (total <= 1) return null
         val nextIdx = when (_playMode.value) {
             PlayMode.SINGLE_LOOP -> _currentIndex.value
+            PlayMode.SEQUENCE -> if (_currentIndex.value >= total - 1) return null else _currentIndex.value + 1
             else -> (_currentIndex.value + 1) % total
         }
         return playItems.getOrNull(nextIdx)
@@ -239,7 +243,7 @@ class PlaybackQueue {
                 playItems = shufflePreservingCurrent(originalItems, origIdx)
                 _currentIndex.value = 0
             }
-            PlayMode.LIST_LOOP -> {
+            PlayMode.LIST_LOOP, PlayMode.SEQUENCE -> {
                 playItems = originalItems
                 _currentIndex.value = originalItems.indexOfFirst { it.songId == currentItem.songId }.coerceAtLeast(0)
             }
