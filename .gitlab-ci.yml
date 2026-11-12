@@ -1,0 +1,33 @@
+# USTC GitLab CI（与 GitHub Actions .github/workflows/ci.yml 对齐：单测 + 桌面编译 + release 构建）
+# 本机 runner：宿主 JDK21 + Android SDK（见本地 local.properties），不打 tag / 不发 release。
+stages: [test]
+
+default:
+  interruptible: true
+
+variables:
+  JAVA_HOME: /home/xuqianhui/android-dev/jdk
+  ANDROID_HOME: /home/xuqianhui/android-dev/sdk
+  ANDROID_SDK_ROOT: /home/xuqianhui/android-dev/sdk
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+before_script:
+  - export PATH="$JAVA_HOME/bin:$PATH"
+  # runner 继承桌面会话会带 DISPLAY，AWT 图形单测会去连不存在的 X 而崩；这里显式清掉走 headless
+  - unset DISPLAY WAYLAND_DISPLAY XAUTHORITY
+  - java -version
+
+test:
+  stage: test
+  timeout: 60m
+  script:
+    - ./gradlew --no-daemon :app:testDebugUnitTest :shared:desktopTest :desktopApp:test
+    - ./gradlew --no-daemon :desktopApp:compileKotlin
+    - ./gradlew --no-daemon :app:assembleRelease
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - app/build/reports/tests/
+      - shared/build/reports/tests/
+      - desktopApp/build/reports/tests/
